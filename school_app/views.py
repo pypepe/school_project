@@ -46,3 +46,12 @@ def subject_detail(request, pk):
  
     if request.method == "GET":
         return JsonResponse(subject)
+    elif request.method == "PUT":
+        new_subject_bytes = request.body
+        new_subject = json.loads(new_subject_bytes)
+        new_subject_index = subjects.index(subject)
+        subjects[new_subject_index] = new_subject
+        return JsonResponse(new_subject, status=201)
+    elif request.method == "DELETE":
+        subjects = list(filter(lambda subject: subject["id"] != pk, subjects))
+        return HttpResponse(status=204)
