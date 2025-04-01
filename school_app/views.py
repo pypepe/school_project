@@ -3,12 +3,12 @@ import json
 
 
 # Create your views here.
-
+from django.core.exceptions import ObjectDoesNotExist
+from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse, HttpResponseNotFound
 from django.views.decorators.csrf import csrf_exempt
 
-
-subjects = [{"id": 1, "name": "Maths"}, {"id": 2, "name": "PE"}]
+from school_app import models
 
 
 def hello_world(request):
@@ -19,39 +19,32 @@ def hello_world(request):
 @csrf_exempt
 def list_subjects(request):
     if request.method == "GET":
+        subjects = list(models.Subject.objects.values())
         return JsonResponse(subjects, safe=False, status=200)
     elif request.method == "POST":
         subject = request.body
-        print(subject)
-        print(type(subject))
-
         subject_dict = json.loads(subject)
-
-        print(subject_dict)
-        print(type(subject_dict))
-        subjects.append(subject_dict)
-        # return HttpResponse(subjects)
+        new_subject = models.Subject(**subject_dict)
+        new_subject.save()
         return JsonResponse(subject_dict, status=200)
     else:
         return HttpResponseNotFound("Sorry, this method is not supported")
 
 @csrf_exempt
 def subject_detail(request, pk):
-    global subjects
-
     try:
-        subject = next(subject for subject in subjects if subject["id"] == pk)
-    except StopIteration:
+        subject = models.Subject.objects.get(pk=pk)
+    except ObjectDoesNotExist:
         return JsonResponse({"status": f"There is no subject with id {pk}"}, status=404)
  
     if request.method == "GET":
-        return JsonResponse(subject)
+        return JsonResponse(model_to_dict(subject))
     elif request.method == "PUT":
         new_subject_bytes = request.body
         new_subject = json.loads(new_subject_bytes)
-        new_subject_index = subjects.index(subject)
-        subjects[new_subject_index] = new_subject
+        subject.__dict__.update(new_subject)
+        subject.save()
         return JsonResponse(new_subject, status=201)
     elif request.method == "DELETE":
-        subjects = list(filter(lambda subject: subject["id"] != pk, subjects))
+        subject.delete()
         return HttpResponse(status=204)
